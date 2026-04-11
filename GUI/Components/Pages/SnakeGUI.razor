@@ -85,6 +85,11 @@
         "white"
     };
 
+    /// <summary>
+    /// Attempts to connect to the Snake server using the current player name,
+    /// server address, and port entered in the GUI.
+    /// </summary>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task ConnectToServerTask()
     {
         if (_controller == null)
@@ -117,12 +122,25 @@
         }
     }
     
+    /// <summary>
+    /// Disconnects the client from the current server
+    /// and updates the status message shown in the GUI.
+    /// </summary>
     private void DisconnectFromServer()
     {
         _controller.Disconnect();
         _statusMessage = "Disconnected.";
     }
 
+    /// <summary>
+    /// Performs first-render initialization for the Snake page,
+    /// including loading the JavaScript module, creating the canvas context,
+    /// and starting the game loop.
+    /// </summary>
+    /// <param name="firstRender">
+    /// A value indicating whether this is the first time the component is rendered.
+    /// </param>
+    /// <returns> A task representing the asynchronous operation. </returns>
     protected override async Task OnAfterRenderAsync( bool firstRender )
     {
         if ( firstRender )
@@ -135,6 +153,11 @@
         }
     }
     
+    /// <summary>
+    /// Runs the main rendering loop for the Snake client.
+    /// Repeatedly waits for a short delay and then draws the next frame.
+    /// </summary>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task GameLoop()
     {
         while ( true )
@@ -144,6 +167,11 @@
         }
     }
     
+    /// <summary>
+    /// Draws one full frame of the current game world,
+    /// including the background, walls, snakes, and power-ups.
+    /// </summary>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task DrawFrame()
     {
         if (_context is null)
@@ -198,7 +226,13 @@
 
         StateHasChanged();
     }
-
+    
+    /// <summary>
+    /// Draws a wall by breaking it into 50 by 50 blocks
+    /// between its two endpoints.
+    /// </summary>
+    /// <param name="wall"> The wall to draw. </param>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task DrawWall(Wall wall)
     {
         if (_context is null)
@@ -229,6 +263,12 @@
         }
     }
 
+    /// <summary>
+    /// Draws one decorative wall block centered at the given world position.
+    /// </summary>
+    /// <param name="x"> The x-coordinate of the wall block center. </param>
+    /// <param name="y"> The y-coordinate of the wall block center. </param>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task DrawWallBlock(int x, int y)
     {
         if (_context is null)
@@ -254,6 +294,12 @@
         await _context.StrokeAsync();
     }
 
+    /// <summary>
+    /// Draws a power-up at its current world position,
+    /// including its outer glow, crystal body, and highlight.
+    /// </summary>
+    /// <param name="powerup"> The power-up to draw. </param>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task DrawPowerup(Powerup powerup)
     {
         if (_context is null)
@@ -294,6 +340,12 @@
 
     }
 
+    /// <summary>
+    /// Draws a snake, including its outline, body, head, eyes,
+    /// and the player's name and score.
+    /// </summary>
+    /// <param name="snake"> The snake to draw. </param>
+    /// <returns> A task representing the asynchronous operation. </returns>
     private async Task DrawSnake(Snake snake)
     {
         
@@ -407,11 +459,14 @@
         return player.Body[player.Body.Count - 1];
     }
     
+    /// <summary>
+    /// Handles a keyboard input from the client and sends the corresponding
+    /// movement command to the server when a supported key is pressed.
+    /// </summary>
+    /// <param name="key"> The key string received from JavaScript. </param>
     [JSInvokable]
     public void HandleKeyPress( string key )
     {
-        // TODO: Once the client is connected and the handshake is complete,
-        //       invoke some controller method to send the appropriate command to the server
         string lower = key.ToLowerInvariant();    
         if (lower == "w" || lower == "arrowup")
         {

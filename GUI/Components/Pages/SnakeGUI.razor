@@ -1,0 +1,445 @@
+@page "/snake"
+@rendermode InteractiveServer
+@using Blazor.Extensions
+@using Blazor.Extensions.Canvas
+@using Blazor.Extensions.Canvas.Canvas2D
+@using System.Diagnostics
+@using GUI.Components.Models
+@using GUI.Components.Controllers
+@inject IJSRuntime JsRuntime;
+@using GUI.Components.Controllers
+
+<PageTitle> Snake </PageTitle>
+
+
+
+
+<div style="position:absolute; top:16px; left:16px; z-index:10; width:300px; background-color:rgba(0,0,0,0.75); color:white; padding:16px;border-radius: 8px;">
+    <div class="mb-2">
+        <strong>Snake Client</strong>
+    </div>  
+    
+    <div class="mb-2">
+        <label>Player Name</label>
+        <input class = "form-control" @bind="_playerName" maxlength="16" disabled="@_controller.IsConnected"/>
+    </div>
+    
+    <div class="mb-2">
+        <label>Server</label>
+        <input class = "form-control" @bind="_serverAddress" disabled="@_controller.IsConnected"/>
+    </div>
+    
+    <div class="mb-2">
+        <label>Port</label>
+        <input class = "form-control" type = "number" @bind="_port" disabled="@_controller.IsConnected"/>
+    </div>
+    
+    <div class="mb-2">
+        <button class="btn btn-primary me-2" @onclick="ConnectToServerTask" disabled="@_controller.IsConnected">
+            Connect
+        </button>
+        <button class="btn btn-secondary" @onclick="DisconnectFromServer" disabled="@(!_controller.IsConnected)">
+            Disconnect
+        </button>
+    </div>
+    
+    <div class="small">
+        @_statusMessage
+    </div>
+</div>
+
+
+<div id="snakeCanvas" style="position: fixed; width: 100%; height: 100%">
+    <BECanvas Width="1000" Height="1000" @ref="_canvasReference"></BECanvas>
+</div>
+
+@code
+{
+    private BECanvasComponent? _canvasReference;
+    private Canvas2DContext? _context;
+    private IJSObjectReference? _jsModule;
+    private readonly NetworkController _controller = new NetworkController();
+    
+ //   private ElementReference backgroundImage ;
+
+    private string _playerName = "Player";
+    private string _serverAddress = "localhost";
+    private string _statusMessage = "Not connected";
+    
+    
+    
+    private int _port = 11000;
+
+    private const int ViewWidth = 1000;
+    private const int ViewHeight = 1000;
+
+    private readonly string[] _snakeColors =
+    {
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "orange",
+        "cyan",
+        "purple",
+        "white"
+    };
+
+    private async Task ConnectToServerTask()
+    {
+        if (_controller == null)
+        {
+            return;
+        }
+        
+        if (string.IsNullOrWhiteSpace(_playerName))
+        {
+            _statusMessage = "Please enter a player name";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_serverAddress))
+        {
+            _statusMessage = "Please enter a server address.";
+            return;
+        }
+
+        await _controller.ConnectAsync(_serverAddress, _port, _playerName);
+        await Task.Delay(100);
+
+        if (_controller.IsConnected)
+        {
+            _statusMessage = "Connected";
+        }
+        else
+        {
+            _statusMessage = "Failed to connect";
+        }
+    }
+    
+    private void DisconnectFromServer()
+    {
+        _controller.Disconnect();
+        _statusMessage = "Disconnected.";
+    }
+
+    protected override async Task OnAfterRenderAsync( bool firstRender )
+    {
+        if ( firstRender )
+        {
+            _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>( "import", "./Components/Pages/SnakeGUI.razor.js" );
+            _context = await _canvasReference.CreateCanvas2DAsync();
+            await JsRuntime.InvokeAsync<object>( "initRenderJS", DotNetObjectReference.Create( this ) );           
+
+            // 
+            _ = GameLoop();
+
+            // in the meantime, draw something to initialize the canvas
+            // you may want to remove this after you are drawing something
+            await _context.SetFillStyleAsync( "lightblue" );
+            await _context.FillRectAsync( 0, 0, 1000, 1000 );
+        }
+    }
+    
+    private async Task GameLoop()
+    {
+        while ( true )
+        {
+            await Task.Delay(20);
+            await DrawFrame();
+        }
+    }
+    
+    private async Task DrawFrame()
+    {
+        if (_context is null)
+        {
+            return;
+        }
+        
+        World temp = _controller.GameWorld;
+   
+        // batch the drawing calls for better performance
+        await _context.BeginBatchAsync();
+        
+        //clean everything
+        await _context.SetFillStyleAsync("black");
+        await _context.FillRectAsync(0, 0, ViewWidth, ViewHeight);
+        
+        // clip the view so that objects drawn outside the canvas will not be shown
+        await _context.BeginPathAsync();
+        await _context.RectAsync( 0, 0, ViewWidth, ViewHeight );
+        await _context.ClipAsync();
+        
+        await _context.SaveAsync();
+        
+        Point2D head = GetPlayerHead(temp);
+
+        await _context.TranslateAsync(ViewWidth / 2, ViewHeight / 2);
+        await _context.TranslateAsync(-head.X, -head.Y); 
+        
+        //Draw the background
+        //await _context.DrawImageAsync(backgroundImage, -temp.Width / 2, -temp.Height / 2, temp.Width, temp.Height);
+        await _context.SetFillStyleAsync("darkgreen");
+        await _context.FillRectAsync(-temp.Width / 2, -temp.Height / 2, temp.Width,temp.Height);
+       
+        foreach (Wall w in temp.GetWalls())
+        {
+            await DrawWall(w);
+        }
+        
+        foreach ( Snake s in temp.GetPlayers())
+        {
+            await DrawSnake(s);
+        }
+        
+        foreach ( Powerup p in temp.GetPowerups())
+        {
+            await DrawPowerup(p);
+        }
+
+        //Restore transformation matrix
+        await _context.RestoreAsync();
+
+        // finish batch drawing
+        await _context.EndBatchAsync();
+
+        StateHasChanged();
+    }
+
+    private async Task DrawWall(Wall wall)
+    {
+        if (_context is null)
+        {
+            return;
+        }
+
+        if (wall.P1.Y == wall.P2.Y)   //Check whether the wall is vertical or horizontal.
+        {
+            int minX = Math.Min(wall.P1.X, wall.P2.X);
+            int maxX = Math.Max(wall.P1.X, wall.P2.X);
+
+
+            for (int x = minX; x <= maxX; x += 50)
+            {
+                await DrawWallBlock(x, wall.P1.Y);
+            }
+        }
+        else
+        {
+            int minY = Math.Min(wall.P1.Y, wall.P2.Y);
+            int maxY = Math.Max(wall.P1.Y, wall.P2.Y);
+
+            for (int y = minY; y <= maxY; y += 50)
+            {
+                await DrawWallBlock(wall.P1.X, y);
+            }
+        }
+    }
+
+    private async Task DrawWallBlock(int x, int y)
+    {
+        if (_context is null)
+        {
+            return;
+        }
+
+        //base block
+        await _context.SetFillStyleAsync("saddlebrown");
+        await _context.FillRectAsync(x - 25, y - 25, 50, 50);
+                
+        // outline
+        await _context.SetStrokeStyleAsync("brown");
+        await _context.SetLineWidthAsync(2);
+        await _context.StrokeRectAsync(x - 25, y - 25, 50, 50);
+                
+        //highlightline
+        await _context.SetStrokeStyleAsync("rgba(255,255,255,0.18)");
+        await _context.SetLineWidthAsync(1);
+        await _context.BeginPathAsync();
+        await _context.MoveToAsync(x - 18, y - 10);
+        await _context.LineToAsync(x + 18, y - 10);
+        await _context.StrokeAsync();
+    }
+
+    private async Task DrawPowerup(Powerup powerup)
+    {
+        if (_context is null)
+        {
+            return;
+        }
+
+        int x = powerup.Location.X;
+        int y = powerup.Location.Y;
+        
+        //outer glow
+        await _context.SetFillStyleAsync("rgba(255,245,120,0.25)");
+        await _context.BeginPathAsync();
+        await _context.ArcAsync(x, y, 12, 0, 2 * Math.PI);
+        await _context.FillAsync();
+
+        // crystal body
+        await _context.SetFillStyleAsync("gold");
+        await _context.SetStrokeStyleAsync("orange");
+        await _context.SetLineWidthAsync(2);
+
+        await _context.BeginPathAsync();
+        await _context.MoveToAsync(x, y - 8);
+        await _context.LineToAsync(x + 8, y);
+        await _context.LineToAsync(x, y + 8);
+        await _context.LineToAsync(x - 8, y);
+        await _context.ClosePathAsync();
+        await _context.FillAsync();
+        await _context.StrokeAsync();
+
+        //inner highlight
+        await _context.SetStrokeStyleAsync("white");
+        await _context.SetLineWidthAsync(1.5f);
+        await _context.BeginPathAsync();
+        await _context.MoveToAsync(x - 2,y - 4);
+        await _context.LineToAsync(x + 3, y - 1);
+        await _context.StrokeAsync();
+
+    }
+
+    private async Task DrawSnake(Snake snake)
+    {
+        
+        if (_context is null || snake.Body.Count == 0 || !snake.Alive)
+        {
+            return;
+        }
+        
+        //outline of body
+        await _context.SetStrokeStyleAsync("rgba(0,0,0,0.35)");
+        await _context.SetLineWidthAsync(14);
+        await _context.BeginPathAsync();
+        await _context.MoveToAsync(snake.Body[0].X, snake.Body[0].Y);
+
+        for(int i =1; i< snake.Body.Count;i++) // Start drawing the outline of the snake
+        {
+            Point2D point = snake.Body [i];
+            await _context.LineToAsync(point.X, point.Y);    
+        }
+
+        await _context.StrokeAsync();
+
+        //main body
+        await _context.SetStrokeStyleAsync(_snakeColors[snake.ID % 8]); // Set different color for different snakes
+        await _context.SetLineWidthAsync(10);
+        await _context.BeginPathAsync();
+        await _context.MoveToAsync(snake.Body[0].X, snake.Body[0].Y);
+
+        for(int i =1; i< snake.Body.Count;i++) // Start drawing the body of the snake
+        {
+            Point2D point = snake.Body[i];
+            await _context.LineToAsync(point.X, point.Y);    
+        }
+        await _context.StrokeAsync();
+        
+        //Drawing the snake head
+        Point2D head = snake.Body[snake.Body.Count - 1];
+        await _context.SetFillStyleAsync(_snakeColors[snake.ID % 8]);
+        await _context.BeginPathAsync();
+        await _context.ArcAsync(head.X, head.Y, 7, 0, 2 * Math.PI);
+        await _context.FillAsync();
+        
+        //Drawing the snake eyes
+        int eye1X = head.X;
+        int eye1Y = head.Y;
+        int eye2X = head.X;
+        int eye2Y = head.Y;   // Preset both 2 eyes to the center of the head
+
+        if (snake.Direction.X == 1)  // Set the eyes' position by snake's direction
+        {
+            eye1X += 3;
+            eye1Y -= 2;
+            eye2X += 3;
+            eye2Y += 2;
+        }
+        else if (snake.Direction.X == -1)
+        {
+            eye1X -= 3;
+            eye1Y -= 2;
+            eye2X -= 3;
+            eye2Y += 2;
+        }
+        else if (snake.Direction.Y == 1)
+        {
+            eye1X -= 2;
+            eye1Y += 3;
+            eye2X += 2;
+            eye2Y += 3;
+        }
+        else if (snake.Direction.Y == -1)
+        {
+            eye1X -= 2;
+            eye1Y -= 3;
+            eye2X += 2;
+            eye2Y -= 3;
+        }
+
+        await _context.SetFillStyleAsync("black");
+        
+        await _context.BeginPathAsync();
+        await _context.ArcAsync(eye1X, eye1Y, 1.5, 0, 2 * Math.PI);
+        await _context.FillAsync();
+        
+        await _context.BeginPathAsync();
+        await _context.ArcAsync(eye2X, eye2Y, 1.5, 0, 2 * Math.PI);
+        await _context.FillAsync();
+        
+        //Name and score of the snake
+        await _context.SetFontAsync("16px Arial");
+        await _context.SetFillStyleAsync("white");
+        await _context.FillTextAsync($"{snake.Name}({snake.Score})", head.X + 12, head.Y - 12);
+    }
+
+    /// <summary>
+    /// Gets the head position of the player's snake.
+    /// </summary>
+    /// <param name="world"> The current game world. </param>
+    /// <returns>
+    /// The position of the player's snake head if the snake exists and has a body;
+    /// otherwise, a default <see cref="Point2D"/>.
+    /// </returns>
+    private Point2D GetPlayerHead(World world)
+    {
+        Snake? player = world.GetPlayerSnake(world.PlayerID);
+
+        if (player is null || player.Body.Count == 0)
+        {
+            return new Point2D();
+        }
+
+        return player.Body[player.Body.Count - 1];
+    }
+    
+    [JSInvokable]
+    public void HandleKeyPress( string key )
+    {
+        // TODO: Once the client is connected and the handshake is complete,
+        //       invoke some controller method to send the appropriate command to the server
+        string lower = key.ToLowerInvariant();    
+        if (lower == "w" || lower == "arrowup")
+        {
+            _controller.SendMovementCommand("up");
+        }
+        else if (lower == "a" || lower == "arrowleft") 
+        {
+            _controller.SendMovementCommand("left");
+        }
+        else if (lower == "s" || lower == "arrowdown")
+        {
+            _controller.SendMovementCommand("down");
+        }
+        else if (lower == "d" || lower == "arrowright")
+        { 
+            _controller.SendMovementCommand("right");
+        }
+
+        // TODO: Remove this, which is just here to show you what the 'key' string is for whatever key you pressed
+        Debug.WriteLine("key pressed: " + key);
+    }
+        
+}

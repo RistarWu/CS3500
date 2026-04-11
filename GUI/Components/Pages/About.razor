@@ -2,4 +2,111 @@
 
 <PageTitle>About</PageTitle>
 
-<h1>Fill in your about page here</h1>
+<h1>About My Snake Client</h1>
+
+<p>
+    This project is a Blazor-based Snake client that connects to the provided Snake server,
+    receives world updates, renders the game world, and sends player movement commands.
+    My main goal was to build a client that follows the required communication protocol,
+    keeps the code organized using MVC, and provides a clear and responsive game view.
+</p>
+
+<h2>Design Overview</h2>
+
+<p>
+    I structured the project using the MVC pattern required in the handout.
+    The <strong>Models</strong> folder contains the data classes used to represent the game state,
+    including <code>Snake</code>, <code>Wall</code>, <code>Powerup</code>, <code>Point2D</code>, and <code>World</code>.
+    The <strong>Controllers</strong> folder contains the networking logic, especially
+    <code>NetworkConnection</code> and <code>NetworkController</code>.
+    The <strong>Pages</strong> folder acts as the View, and <code>SnakeGUI.razor</code>
+    is responsible for drawing the game and handling user input.
+</p>
+
+<h2>Network / Protocol Design</h2>
+
+<p>
+    The client connects to the server using the required host and port, sends the player name,
+    reads the player ID and world size, then reads wall JSON objects followed by continuous
+    snake and power-up updates. The controller identifies each incoming JSON line by checking
+    its top-level properties and deserializes it into the correct model object.
+</p>
+
+<p>
+    The client only sends movement commands after the handshake is complete.
+    Supported movement inputs are the default WASD controls required by the assignment.
+</p>
+
+<h2>Rendering Design</h2>
+
+<p>
+    The game view is drawn on a 1000x1000 canvas. I use world coordinates for all objects
+    and translate the drawing context so that the local player's snake head stays centered in
+    the viewport. Each frame, the canvas is cleared, the visible region is clipped, the view
+    is translated, and then the background, walls, snakes, and power-ups are drawn.
+</p>
+
+<p>
+    I use different colors for the first several snakes so that different players are visually
+    distinguishable. Player names and scores are drawn next to each snake. Wall drawing divides
+    walls into 50x50 blocks based on the server-provided endpoints.
+</p>
+
+<h2>Features Implemented</h2>
+
+<ul>
+    <li>Connect to a server using player name, server address, and port</li>
+    <li>Disconnect from the server</li>
+    <li>Display the current game world on a 1000x1000 canvas</li>
+    <li>Draw walls, snakes, power-ups, player names, and scores</li>
+    <li>Center the view on the local player's snake</li>
+    <li>Support WASD input for movement commands</li>
+    <li>Use separate model, controller, and view responsibilities</li>
+</ul>
+
+<h2>Notable Design Decisions</h2>
+
+<ul>
+    <li>
+        I store the current world state in a <code>World</code> object and protect shared data
+        with locking because the networking code updates the world while the GUI reads from it.
+    </li>
+    <li>
+        I deserialize server JSON directly into model objects to keep the networking and model
+        code simple and close to the protocol specification.
+    </li>
+    <li>
+        I use an async drawing loop so that drawing operations fit naturally with the async
+        canvas API.
+    </li>
+</ul>
+
+<h2>Current Limitations / Known Issues</h2>
+
+<ul>
+    <li>
+        Connection failure feedback is currently basic. The GUI reports connection failure, but
+        detailed error messages could still be improved.
+    </li>
+    <li>
+        Some polish features such as extra animation effects or crash explosions may still be
+        limited or unfinished, depending on the current build.
+    </li>
+    <li>
+        The visual style is functional and readable, but there is still room for more polish.
+    </li>
+</ul>
+
+<h2>What I Want the Grader to Notice</h2>
+
+<ul>
+    <li>The project follows the required MVC organization.</li>
+    <li>The client follows the specified connection and communication sequence.</li>
+    <li>The game world is rendered in world space with the player's snake centered in view.</li>
+    <li>The client supports the required WASD controls and displays player names and scores.</li>
+    <li>I focused on making the code readable and keeping responsibilities clearly separated.</li>
+</ul>
+
+<p>
+    Part of this about page is translated by Google Translator
+</p>

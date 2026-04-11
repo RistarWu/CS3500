@@ -13,7 +13,7 @@
 
 
 
-
+<img @ref="backgroundImage" src="images/Background.png" alt="background" style="display:none;" />
 <div style="position:absolute; top:16px; left:16px; z-index:10; width:300px; background-color:rgba(0,0,0,0.75); color:white; padding:16px;border-radius: 8px;">
     <div class="mb-2">
         <strong>Snake Client</strong>
@@ -60,7 +60,7 @@
     private IJSObjectReference? _jsModule;
     private readonly NetworkController _controller = new NetworkController();
     
- //   private ElementReference backgroundImage ;
+ 　　private ElementReference backgroundImage ;
 
     private string _playerName = "Player";
     private string _serverAddress = "localhost";
@@ -130,14 +130,8 @@
             _jsModule = await JsRuntime.InvokeAsync<IJSObjectReference>( "import", "./Components/Pages/SnakeGUI.razor.js" );
             _context = await _canvasReference.CreateCanvas2DAsync();
             await JsRuntime.InvokeAsync<object>( "initRenderJS", DotNetObjectReference.Create( this ) );           
-
-            // 
+            
             _ = GameLoop();
-
-            // in the meantime, draw something to initialize the canvas
-            // you may want to remove this after you are drawing something
-            await _context.SetFillStyleAsync( "lightblue" );
-            await _context.FillRectAsync( 0, 0, 1000, 1000 );
         }
     }
     
@@ -179,9 +173,7 @@
         await _context.TranslateAsync(-head.X, -head.Y); 
         
         //Draw the background
-        //await _context.DrawImageAsync(backgroundImage, -temp.Width / 2, -temp.Height / 2, temp.Width, temp.Height);
-        await _context.SetFillStyleAsync("darkgreen");
-        await _context.FillRectAsync(-temp.Width / 2, -temp.Height / 2, temp.Width,temp.Height);
+        await _context.DrawImageAsync(backgroundImage, -temp.Width / 2, -temp.Height / 2, temp.Width, temp.Height);
        
         foreach (Wall w in temp.GetWalls())
         {
@@ -437,9 +429,7 @@
         { 
             _controller.SendMovementCommand("right");
         }
-
-        // TODO: Remove this, which is just here to show you what the 'key' string is for whatever key you pressed
-        Debug.WriteLine("key pressed: " + key);
+        
     }
         
 }

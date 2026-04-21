@@ -12,7 +12,7 @@ public class DatabaseController
     /// Replace the database name, uid, and password with your own values.
     /// </summary>
     private const string connectionString =
-        "server=atr.eng.utah.edu;database=u1555035;uid=u1555035;password=Lele009811";
+        "server=atr.eng.utah.edu;database=u1555035;uid=u1555035;password=RistarWu123";
 
     /// <summary>
     /// Inserts a new row into the Games table and returns the new game ID.

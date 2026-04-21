@@ -37,10 +37,12 @@ public class NetworkController
     public World GameWorld => _world;
 
     /// <summary>
-    /// Update for the database
+    /// Things for the database
     /// </summary>
     private readonly DatabaseController _database = new DatabaseController();
     private int _currentGameID = -1;
+    private readonly HashSet<int> _seenPlayers = new HashSet<int>();
+    private readonly HashSet<int> _playersMarkedLeft = new HashSet<int>();
     
     /// <summary>
     /// Initializes a new instance of the <see cref="NetworkController"/> class.
@@ -73,6 +75,8 @@ public class NetworkController
             _connection.Send(playerName);
             
             _currentGameID = _database.StartGame();
+            _seenPlayers.Clear();
+            _playersMarkedLeft.Clear();
             
             Task.Run(ReceiveLoop);
         }
@@ -92,9 +96,13 @@ public class NetworkController
     {
         if (_currentGameID != -1)
         {
+            _database.SetAllPlayersLeaveTime(_currentGameID);
             _database.EndGame(_currentGameID);
             _currentGameID = -1;
         }
+        
+        _seenPlayers.Clear();
+        _playersMarkedLeft.Clear();
         
         _connection?.Disconnect();
         _connection = null;
@@ -115,7 +123,7 @@ public class NetworkController
             string idLine = _connection.ReadLine();
             if (int.TryParse(idLine, out int playerID))
             {
-                _world.SetPlayerID(playerID);
+                _world.SetPlayerId(playerID);
             }
             else // Cannot parse the ID, disconnect
             {
@@ -180,7 +188,31 @@ public class NetworkController
             Snake? snake = JsonSerializer.Deserialize<Snake>(line);
             if (snake != null)
             {
-                _world.UpdatePlayerID(snake);
+                Snake? oldSnake = _world.GetPlayerSnake(snake.ID);
+
+                _world.UpdatePlayerId(snake);
+
+                Snake? updatedSnake = _world.GetPlayerSnake(snake.ID);
+
+                if (!_seenPlayers.Contains(snake.ID) && _currentGameID != -1)
+                {
+                    int maxScore = updatedSnake is null ? snake.Score : updatedSnake.MaxScoreSeen;
+                    _database.AddPlayer(snake.ID, snake.Name, maxScore, _currentGameID);
+                    _seenPlayers.Add(snake.ID);
+                }
+                else if (_currentGameID != -1 && oldSnake is not null && updatedSnake is not null)
+                {
+                    if (updatedSnake.MaxScoreSeen > oldSnake.MaxScoreSeen)
+                    {
+                        _database.UpdatePlayerMaxScore(snake.ID, _currentGameID, updatedSnake.MaxScoreSeen);
+                    }
+                }
+
+                if (snake.Disconnected && _currentGameID != -1 && !_playersMarkedLeft.Contains(snake.ID))
+                {
+                    _database.SetPlayerLeaveTime(snake.ID, _currentGameID);
+                    _playersMarkedLeft.Add(snake.ID);
+                }
             }
 
             return;

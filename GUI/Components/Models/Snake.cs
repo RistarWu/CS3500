@@ -53,7 +53,13 @@ public class Snake
     [JsonPropertyName("join")]
     public bool Join { get; set; } = false;
 
-
+    /// <summary>
+    /// Gets or sets the highest score this snake has reached
+    /// during the current game as tracked locally by the client.
+    /// This property is not part of JSON deserialization.
+    /// </summary>
+    public int MaxScoreSeen { get; set; }
+    
     public Snake() // Default constructor
     {
         ID = 0;
@@ -65,7 +71,7 @@ public class Snake
         Died = false;
         Disconnected = false;
         Join = false;
-        
+        MaxScoreSeen = 0;
     }
     
 

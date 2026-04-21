@@ -26,7 +26,7 @@ public class World
         HandshakeComplete = false;
     }
     
-    public void SetPlayerID(int id)
+    public void SetPlayerId(int id)
     {
     lock (_lock)
         {
@@ -51,7 +51,7 @@ public class World
         }
     }
 
-    public void UpdatePlayerID(Snake snake)
+    public void UpdatePlayerId(Snake snake)
     {
         lock (_lock)
         {
@@ -63,7 +63,12 @@ public class World
             {
                 if (!_players.ContainsKey(snake.ID))
                 {
-                    _players.Add(snake.ID, snake);
+                    snake.MaxScoreSeen = snake.Score;
+                }
+                else
+                {
+                    Snake oldSnake = _players[snake.ID];
+                    snake.MaxScoreSeen = Math.Max(oldSnake.MaxScoreSeen, snake.Score);
                 }
                 _players[snake.ID] = snake;
             }

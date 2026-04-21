@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GUI", "GUI\GUI.csproj", "{B650282B-FE04-4750-B4D3-9EEB46A24B4A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebServer", "WebServer\WebServer.csproj", "{EC210609-7AF1-4E81-B0BD-AAEBB8839563}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{B650282B-FE04-4750-B4D3-9EEB46A24B4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B650282B-FE04-4750-B4D3-9EEB46A24B4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B650282B-FE04-4750-B4D3-9EEB46A24B4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC210609-7AF1-4E81-B0BD-AAEBB8839563}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC210609-7AF1-4E81-B0BD-AAEBB8839563}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC210609-7AF1-4E81-B0BD-AAEBB8839563}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC210609-7AF1-4E81-B0BD-AAEBB8839563}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

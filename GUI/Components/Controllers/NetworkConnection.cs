@@ -50,7 +50,7 @@ public sealed class NetworkConnection : IDisposable
         {
             // Only establish the reader/writer if the provided TcpClient is already connected.
             _reader = new StreamReader( _tcpClient.GetStream(), new UTF8Encoding(false) );
-            _writer = new StreamWriter( _tcpClient.GetStream(), Encoding.UTF8 ) { AutoFlush = true }; // AutoFlush ensures data is sent immediately
+            _writer = new StreamWriter( _tcpClient.GetStream(), new UTF8Encoding(false) ) { AutoFlush = true }; // AutoFlush ensures data is sent immediately
         }
     }
 

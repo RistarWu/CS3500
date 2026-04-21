@@ -37,6 +37,12 @@ public class NetworkController
     public World GameWorld => _world;
 
     /// <summary>
+    /// Update for the database
+    /// </summary>
+    private readonly DatabaseController _database = new DatabaseController();
+    private int _currentGameID = -1;
+    
+    /// <summary>
     /// Initializes a new instance of the <see cref="NetworkController"/> class.
     /// </summary>
     public NetworkController()
@@ -46,7 +52,7 @@ public class NetworkController
     }
 
     /// <summary>
-    /// Connects to the server, sends the player name,
+    /// Connects to the server, sends the player name, sends information to the database
     /// and starts the background receive loop.
     /// </summary>
     /// <param name="serverAddress"> The host name or IP address of the server. </param>
@@ -65,6 +71,9 @@ public class NetworkController
             _connection = new NetworkConnection();
             _connection.Connect(serverAddress, port);
             _connection.Send(playerName);
+            
+            _currentGameID = _database.StartGame();
+            
             Task.Run(ReceiveLoop);
         }
         catch (Exception e) // Disconnect when there is an error
@@ -77,9 +86,16 @@ public class NetworkController
 
     /// <summary>
     /// Disconnects from the server and cleans up connection resources.
+    /// Sends information to the database
     /// </summary>
     public void Disconnect()
     {
+        if (_currentGameID != -1)
+        {
+            _database.EndGame(_currentGameID);
+            _currentGameID = -1;
+        }
+        
         _connection?.Disconnect();
         _connection = null;
     }
